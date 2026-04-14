@@ -19,3 +19,31 @@ jobs:
         cache: maven
     - name: Build with Maven
       run: mvn -Dtest=HelloServiceTest test
+
+    - name: Start Hello app
+      run: mvn spring-boot:start
+
+    - name: Wait app to be ready
+      run: |
+        for i in {1..30}; do
+          if curl -s http://localhost:8080/api/hello > /dev/null; then
+            echo "App is ready"
+            exit 0
+          fi
+          sleep 1
+        done
+        echo "App failed to start" && exit 1
+        
+    - name: Test /api/hello endpoint
+      run: |
+        HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/api/hello)
+        if [ "$HTTP_CODE" -eq 200 ]; then
+          echo "Endpoint returned 200 OK"
+        else
+          echo "Endpoint returned $HTTP_CODE, expected 200"
+          exit 1
+        fi
+        
+    - name: Stop Spring Boot app
+      if: always()
+      run: mvn spring-boot:stop
